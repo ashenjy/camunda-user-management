@@ -1,0 +1,47 @@
+server.port: 8080
+
+camunda.rest-api:
+  jwt:
+    secret-path: /home/ashen/Desktop/Programming/upwork/camunda-ext-task/camunda-microservices/keys/key.pub
+#    validator-class: com.cn.camunda.security.config.jwt.ValidatorJwt
+
+spring:
+  application:
+    name: camunda-user-management-app
+  datasource:
+    url: jdbc:h2:mem:camunda-user;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    # save to file --> url=jdbc:h2:file:./data/demo
+    username: sa
+    password: sa
+  h2:
+    console:
+      enabled: true
+      path: /h2
+
+
+#spring.security.user.name: user
+#spring.security.user.password: user
+
+#  jpa:
+#    generate-ddl: true
+#    hibernate:
+#      #when the server runs, the database(table) instance is created. And whenever the server stops, the database table instance is dropped.
+#      ddl-auto: create-drop
+#    show-sql: false
+#    open-in-view: true # disable JPA warning
+
+# Logging
+logging.level:
+  root: INFO
+  ##  io.micrometer: INFO
+  ##  org.jboss: INFO
+  ##  org.springframework: INFO
+  ##  org.apache.ibatis: INFO
+  ##  com.zaxxer.hikari: INFO
+  ##  org.hibernate: INFO
+  ##  org.apache.http: INFO
+#  org.springframework.security: TRACE
+  # To log REST controllers
+  org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping: TRACE
+  # To log web access
+  org.springframework.web: TRACE
