@@ -6,6 +6,8 @@ import io.jsonwebtoken.SignatureAlgorithm;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.IOUtils;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 
@@ -16,8 +18,10 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Component
 @Slf4j
@@ -25,13 +29,32 @@ public class JwtTokenUtil implements Serializable {
 
     private static final long serialVersionUID = -2550185165626007488L;
 
-    public static final long JWT_TOKEN_VALIDITY = 5 * 60 * 60;
+    public static final long JWT_TOKEN_VALIDITY = 60; //1 minute
+    //5 * 60 * 60 -> 5 minutes
 
     @Value("${camunda.rest-api.jwt.secret-path}")
     private String jwtSecretPath;
 
     public String getUsernameFromToken(String token) {
         return getClaimFromToken(token, Claims::getSubject);
+    }
+
+    public String getPasswordFromToken(String token) {
+        Claims body = getAllClaimsFromToken(token);
+        if(body.get("password") instanceof String) {
+            return (String) body.get("password");
+        }
+        log.error("ERROR: Unable to load 'password' from JWT Token");
+        return null;
+    }
+
+    public List<String> getAuthoritiesFromToken(String token) {
+        Claims body = getAllClaimsFromToken(token);
+        if(body.get("authorities") instanceof List) {
+            return (List<String>) body.get("authorities");
+        }
+        log.error("ERROR: Unable to load granted 'authorities' from JWT Token");
+        return null;
     }
 
     public Date getIssuedAtDateFromToken(String token) {
@@ -62,9 +85,13 @@ public class JwtTokenUtil implements Serializable {
         return false;
     }
 
-    public String generateToken(UserDetails userDetails) {
-        Map<String, Object> claims = new HashMap<>();
-        return doGenerateToken(claims, userDetails.getUsername());
+    public String generateToken(UserDetails ud) {
+        Map<String, Object> claims = Jwts.claims().setSubject(ud.getUsername());
+        claims.put("password", ud.getPassword());
+        claims.put("authorities", ud.getAuthorities().stream().map(GrantedAuthority::getAuthority).collect(Collectors.toList()));
+//        claims.put("authorities", ud.getAuthorities());
+
+        return doGenerateToken(claims, ud.getUsername());
     }
 
     private String doGenerateToken(Map<String, Object> claims, String subject) {
@@ -94,5 +121,18 @@ public class JwtTokenUtil implements Serializable {
             }
         }
         return jwtSecret;
+    }
+
+    public UserDetails getUserDetailsFromToken(String username, String jwtToken) {
+        List<String> au = getAuthoritiesFromToken(jwtToken);
+        for (int i = 0; i < au.size(); i++) {
+            String authority = au.get(i);
+            if (authority.startsWith("ROLE_")) {
+                au.set(i, authority.replaceAll("ROLE_", ""));
+            }
+        }
+        String[] roles = new String[au.size()];
+
+        return User.withUsername(username).password(getPasswordFromToken(jwtToken)).roles(au.toArray(roles)).build();
     }
 }
