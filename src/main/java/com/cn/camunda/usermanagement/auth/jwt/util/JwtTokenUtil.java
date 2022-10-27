@@ -1,16 +1,19 @@
 package com.cn.camunda.usermanagement.auth.jwt.util;
 
-import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
+import com.cn.camunda.usermanagement.services.UserDetailsImpl;
+import io.jsonwebtoken.*;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.IOUtils;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.ResponseCookie;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
+import org.springframework.web.util.WebUtils;
 
+import javax.servlet.http.Cookie;
+import javax.servlet.http.HttpServletRequest;
 import java.io.InputStream;
 import java.io.Serializable;
 import java.nio.charset.StandardCharsets;
@@ -29,11 +32,37 @@ public class JwtTokenUtil implements Serializable {
 
     private static final long serialVersionUID = -2550185165626007488L;
 
-    public static final long JWT_TOKEN_VALIDITY = 60; //1 minute
+//    public static final long JWT_TOKEN_VALIDITY = 60; //1 minute
     //5 * 60 * 60 -> 5 minutes
 
-    @Value("${camunda.rest-api.jwt.secret-path}")
+    @Value("${application.jwt.secret-path}")
     private String jwtSecretPath;
+
+    @Value("${application.jwt.expiration-ms}")
+    private int jwtExpirationMs;
+
+    @Value("${application.jwt.cookie-name}")
+    private String jwtCookie;
+
+    public String getJwtFromCookies(HttpServletRequest request) {
+        Cookie cookie = WebUtils.getCookie(request, jwtCookie);
+        if (cookie != null) {
+            return cookie.getValue();
+        } else {
+            return null;
+        }
+    }
+
+    public ResponseCookie generateJwtCookie(UserDetailsImpl userPrincipal) {
+        String jwt = generateTokenFromUsername(userPrincipal.getUsername());
+        ResponseCookie cookie = ResponseCookie.from(jwtCookie, jwt).path("/api").maxAge(24 * 60 * 60).httpOnly(true).build();
+        return cookie;
+    }
+
+    public ResponseCookie getCleanJwtCookie() {
+        ResponseCookie cookie = ResponseCookie.from(jwtCookie, null).path("/api").build();
+        return cookie;
+    }
 
     public String getUsernameFromToken(String token) {
         return getClaimFromToken(token, Claims::getSubject);
@@ -87,6 +116,7 @@ public class JwtTokenUtil implements Serializable {
 
     public String generateToken(UserDetails ud) {
         Map<String, Object> claims = Jwts.claims().setSubject(ud.getUsername());
+        //TODO: remove adding sensitive info to jwt token
         claims.put("password", ud.getPassword());
         claims.put("authorities", ud.getAuthorities().stream().map(GrantedAuthority::getAuthority).collect(Collectors.toList()));
 //        claims.put("authorities", ud.getAuthorities());
@@ -97,7 +127,7 @@ public class JwtTokenUtil implements Serializable {
     private String doGenerateToken(Map<String, Object> claims, String subject) {
 
         return Jwts.builder().setClaims(claims).setSubject(subject).setIssuedAt(new Date(System.currentTimeMillis()))
-                .setExpiration(new Date(System.currentTimeMillis() + JWT_TOKEN_VALIDITY * 1000)).signWith(SignatureAlgorithm.HS512, extractJwtSecret(jwtSecretPath)).compact();
+                .setExpiration(new Date(System.currentTimeMillis() + jwtExpirationMs)).signWith(SignatureAlgorithm.HS512, extractJwtSecret(jwtSecretPath)).compact();
     }
 
     public Boolean canTokenBeRefreshed(String token) {
@@ -107,6 +137,24 @@ public class JwtTokenUtil implements Serializable {
     public Boolean validateToken(String token, UserDetails userDetails) {
         final String username = getUsernameFromToken(token);
         return (username.equals(userDetails.getUsername()) && !isTokenExpired(token));
+    }
+
+    public boolean validateToken(String authToken) {
+        try {
+            Jwts.parser().setSigningKey(extractJwtSecret(jwtSecretPath)).parseClaimsJws(authToken);
+            return true;
+        } catch (SignatureException e) {
+            log.error("Invalid JWT signature: {}", e.getMessage());
+        } catch (MalformedJwtException e) {
+            log.error("Invalid JWT token: {}", e.getMessage());
+        } catch (ExpiredJwtException e) {
+            log.error("JWT token is expired: {}", e.getMessage());
+        } catch (UnsupportedJwtException e) {
+            log.error("JWT token is unsupported: {}", e.getMessage());
+        } catch (IllegalArgumentException e) {
+            log.error("JWT claims string is empty: {}", e.getMessage());
+        }
+        return false;
     }
 
     //TODO: Auto extract secret at app startup
@@ -134,5 +182,14 @@ public class JwtTokenUtil implements Serializable {
         String[] roles = new String[au.size()];
 
         return User.withUsername(username).password(getPasswordFromToken(jwtToken)).roles(au.toArray(roles)).build();
+    }
+
+    public String generateTokenFromUsername(String username) {
+        return Jwts.builder()
+                .setSubject(username)
+                .setIssuedAt(new Date())
+                .setExpiration(new Date((new Date()).getTime() + jwtExpirationMs))
+                .signWith(SignatureAlgorithm.HS512, extractJwtSecret(jwtSecretPath))
+                .compact();
     }
 }

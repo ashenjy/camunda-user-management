@@ -1,4 +1,4 @@
-package com.cn.camunda.usermanagement.model;
+package com.cn.camunda.usermanagement.models;
 
 import java.io.Serializable;
 

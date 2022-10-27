@@ -3,6 +3,7 @@ package com.cn.camunda.usermanagement.auth.rest;
 
 import com.cn.camunda.usermanagement.auth.jwt.JwtAuthenticationEntryPoint;
 import com.cn.camunda.usermanagement.auth.jwt.JwtRequestFilter;
+import com.cn.camunda.usermanagement.services.UserDetailsServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.security.SecurityProperties;
 import org.springframework.context.annotation.Bean;
@@ -34,15 +35,18 @@ public class CamundaRESTSecurityConfig extends WebSecurityConfigurerAdapter {
     private JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
 
     @Autowired
-    private UserDetailsService userDetailsService;
+    private UserDetailsServiceImpl userDetailsService;
 
     @Autowired
     private JwtRequestFilter jwtRequestFilter;
 
+    //TODO: configurable
     private static final String[] UNPROTECTED_PATHS = {
             "/actuator/**", // spring actuator endpoints
             "/error", // spring error page
-            "/authenticate" // visible resources, for example for SPA
+            "/h2/**",
+            "/authenticate",
+            "/api/auth/*"// visible resources, for example for SPA
     };
 
 //    private static final String[] PROTECTED_PATHS = {

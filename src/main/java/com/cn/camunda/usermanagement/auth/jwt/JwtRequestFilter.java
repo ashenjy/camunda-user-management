@@ -1,9 +1,10 @@
 package com.cn.camunda.usermanagement.auth.jwt;
 
-//import com.cn.camunda.security.config.jwt.service.JwtUserDetailsService;
-//import com.cn.camunda.security.config.jwt.service.JwtUserDetailsService;
+//import com.cn.camunda.security.config.jwt.services.JwtUserDetailsService;
+//import com.cn.camunda.security.config.jwt.services.JwtUserDetailsService;
 
 import com.cn.camunda.usermanagement.auth.jwt.util.JwtTokenUtil;
+import com.cn.camunda.usermanagement.services.UserDetailsServiceImpl;
 import io.jsonwebtoken.ExpiredJwtException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -22,8 +23,11 @@ import java.io.IOException;
 @Component
 public class JwtRequestFilter extends OncePerRequestFilter {
 
+//	@Autowired
+//	private UserDetailsService jwtUserDetailsService;
+
 	@Autowired
-	private UserDetailsService jwtUserDetailsService;
+	private UserDetailsServiceImpl userDetailsService;
 
 	@Autowired
 	private JwtTokenUtil jwtTokenUtil;
@@ -31,14 +35,13 @@ public class JwtRequestFilter extends OncePerRequestFilter {
 	@Override
 	protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
 			throws ServletException, IOException {
-
-		final String requestTokenHeader = request.getHeader("Authorization");
-
 		String username = null;
-		String jwtToken = null;
+		//if Auth header is null, check jwt exist in cookie
+		String jwtToken = (request.getHeader("Authorization") == null) ? parseJwtFromCookie(request) : request.getHeader("Authorization");
+
 		// JWT Token is in the form "Bearer token". Remove Bearer word and get only the Token
-		if (requestTokenHeader != null && requestTokenHeader.startsWith("Bearer ")) {
-			jwtToken = requestTokenHeader.substring(7);
+		if (jwtToken != null && jwtToken.startsWith("Bearer ")) {
+			jwtToken = jwtToken.substring(7);
 			try {
 				username = jwtTokenUtil.getUsernameFromToken(jwtToken);
 			} catch (IllegalArgumentException e) {
@@ -53,7 +56,7 @@ public class JwtRequestFilter extends OncePerRequestFilter {
 		//Once we get the token validate it.
 		if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
 
-			UserDetails userDetails = this.jwtUserDetailsService.loadUserByUsername(username);
+			UserDetails userDetails = userDetailsService.loadUserByUsername(username);
 
 			// if token is valid configure Spring Security to manually set authentication
 			if (jwtTokenUtil.validateToken(jwtToken, userDetails)) {
@@ -69,5 +72,10 @@ public class JwtRequestFilter extends OncePerRequestFilter {
 		}
 		chain.doFilter(request, response);
 	}
+
+	private String parseJwtFromCookie(HttpServletRequest request) {
+		return jwtTokenUtil.getJwtFromCookies(request);
+	}
+
 
 }
