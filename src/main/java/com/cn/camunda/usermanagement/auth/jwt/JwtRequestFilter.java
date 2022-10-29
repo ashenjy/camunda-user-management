@@ -39,9 +39,11 @@ public class JwtRequestFilter extends OncePerRequestFilter {
 		//if Auth header is null, check jwt exist in cookie
 		String jwtToken = (request.getHeader("Authorization") == null) ? parseJwtFromCookie(request) : request.getHeader("Authorization");
 
-		// JWT Token is in the form "Bearer token". Remove Bearer word and get only the Token
-		if (jwtToken != null && jwtToken.startsWith("Bearer ")) {
-			jwtToken = jwtToken.substring(7);
+		if (jwtToken != null) {
+			// JWT Token is in the form "Bearer token". Remove Bearer word and get only the Token
+			if(jwtToken.startsWith("Bearer ")) {
+				jwtToken = jwtToken.substring(7);
+			}
 			try {
 				username = jwtTokenUtil.getUsernameFromToken(jwtToken);
 			} catch (IllegalArgumentException e) {

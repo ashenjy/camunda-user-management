@@ -104,10 +104,10 @@ public class JwtTokenUtil implements Serializable {
         return Jwts.parser().setSigningKey(extractJwtSecret(jwtSecretPath)).parseClaimsJws(token).getBody();
     }
 
-    private Boolean isTokenExpired(String token) {
-        final Date expiration = getExpirationDateFromToken(token);
-        return expiration.before(new Date());
-    }
+//    private Boolean isTokenExpired(String token) {
+//        final Date expiration = getExpirationDateFromToken(token);
+//        return expiration.before(new Date());
+//    }
 
     private Boolean ignoreTokenExpiration(String token) {
         // here you specify tokens, for that the expiration is ignored
@@ -139,10 +139,10 @@ public class JwtTokenUtil implements Serializable {
         return (username.equals(userDetails.getUsername()) && !isTokenExpired(token));
     }
 
-    public boolean validateToken(String authToken) {
+    private Boolean isTokenExpired(String authToken) {
         try {
             Jwts.parser().setSigningKey(extractJwtSecret(jwtSecretPath)).parseClaimsJws(authToken);
-            return true;
+            return false;
         } catch (SignatureException e) {
             log.error("Invalid JWT signature: {}", e.getMessage());
         } catch (MalformedJwtException e) {
@@ -154,7 +154,7 @@ public class JwtTokenUtil implements Serializable {
         } catch (IllegalArgumentException e) {
             log.error("JWT claims string is empty: {}", e.getMessage());
         }
-        return false;
+        return true;
     }
 
     //TODO: Auto extract secret at app startup

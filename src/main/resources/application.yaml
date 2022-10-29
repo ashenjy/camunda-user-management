@@ -3,7 +3,7 @@ server.port: 8080
 application:
   jwt:
     secret-path: /home/ashen/Desktop/Programming/upwork/camunda-ext-task/camunda-microservices/keys/key.pub
-    expiration-ms: 86400000
+    expiration-ms: 100000
     cookie-name: user-service
 
 spring:
@@ -11,25 +11,25 @@ spring:
   application:
     name: user-management-app
 #  -----------------H2--------
-  datasource:
-    url: jdbc:h2:mem:camunda-user;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
-    # save to file --> url=jdbc:h2:file:./data/demo
-    username: sa
-    password: sa
-  h2:
-    console:
-      enabled: true
-      path: /h2
+#  datasource:
+#    url: jdbc:h2:mem:camunda-db;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+#    # save to file --> url=jdbc:h2:file:./data/demo
+#    username: sa
+#    password: sa
+#  h2:
+#    console:
+#      enabled: true
+#      path: /h2
   jpa:
     defer-datasource-initialization: true
     hibernate:
 #      dialect: org.hibernate.dialect.H2Dialect
-      ddl-auto: create-drop
-#    database-platform: org.hibernate.dialect.PostgreSQLDialect
-#  datasource:
-#    url: "jdbc:postgresql://localhost:5432/camunda-user-management"
-#    username: camunda
-#    password: camunda321!
+      ddl-auto: update
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+  datasource:
+    url: "jdbc:postgresql://localhost:5432/camunda-services"
+    username: postgres
+    password: root
 
 
 
